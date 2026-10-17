@@ -1,124 +1,161 @@
-# Ciudad y conducción con OpenGL: cuatro clases
+# Ciudad y conducción con OpenGL: Arquitectura por etapas
 
-Proyecto de enseñanza basado en `AppCamara.java` y `AppLaberinto.java` de las clases: Java 17, Maven, LWJGL 3.3.3, GLFW, OpenGL 3.3 Core, shaders GLSL, VAO y VBO. Toda la geometría se genera con código; no requiere imágenes ni modelos externos.
+Proyecto de gráficos por computadora y enseñanza de OpenGL moderno en Java: Java 17+, Maven, LWJGL 3.3.3, GLFW, OpenGL 3.3 Core, shaders GLSL, VAO y VBO. Toda la geometría se genera proceduralmente con código (cubos transformados); no se requieren imágenes de textura ni modelos 3D externos.
 
-## Ejecutar
+---
 
-Abre una terminal **en esta carpeta**, donde está `pom.xml`. Necesitas un JDK 17 o superior y Maven (`java -version`, `mvn -version`). La primera compilación descarga las dependencias.
+## Cómo ejecutar
+
+Abre una terminal en la raíz del proyecto (`CiudadConduccion`), donde se ubica el archivo [pom.xml](file:///c:/Users/LENOVO/Documents/proyecto_grafica/CiudadConduccion/pom.xml). Se requiere un JDK 17 o superior y Apache Maven (`java -version`, `mvn -version`).
+
+### Ejecución directa de la versión completa (por defecto)
+
+El proyecto tiene configurada la clase final `JuegoEntregas` como `mainClass` en el [pom.xml](file:///c:/Users/LENOVO/Documents/proyecto_grafica/CiudadConduccion/pom.xml):
 
 ```sh
-mvn compile exec:exec -DmainClass=com.graphics.clase1
-mvn compile exec:exec -DmainClass=com.graphics.clase2
-mvn compile exec:exec -DmainClass=com.graphics.clase3
-mvn compile exec:exec -DmainClass=com.graphics.clase4
+mvn compile exec:exec
 ```
 
-Ejecuta un comando por vez; ESC cierra la ventana. `mvn compile exec:exec` abre la versión final por defecto. En macOS, el perfil Maven agrega `-XstartOnFirstThread`. Si ejecutas desde un IDE en Mac, agrega ese argumento a las opciones de la JVM. Usa `exec:exec`, porque `exec:java` no inicia el proceso de esa forma.
+### Ejecución por etapas individuales
 
-Incluye bibliotecas nativas para macOS Intel/Apple Silicon, Windows x64 y Linux x64/ARM64. Se necesita una sesión gráfica y un controlador compatible con OpenGL 3.3. No está diseñado para ejecutarse en un servidor sin pantalla.
+Cada etapa posee su propio método `main` y puede ejecutarse de manera independiente para observar la progresión técnica:
 
-## Cómo se acumulan los avances
+```sh
+# Etapa 1: Ciudad base, mapa 11x11 y cámara orbital
+mvn compile exec:exec -DmainClass=com.graphics.CiudadBase
+
+# Etapa 2: Auto con chata/remolque acoplado, físicas y colisiones
+mvn compile exec:exec -DmainClass=com.graphics.CiudadConAuto
+
+# Etapa 3: Iluminación día/noche, farolas urbanas y faros del vehículo
+mvn compile exec:exec -DmainClass=com.graphics.CiudadIluminada
+
+# Etapa 4: Decoración urbana, semáforos, minimapa y juego de entregas
+mvn compile exec:exec -DmainClass=com.graphics.JuegoEntregas
+```
+
+> [!NOTE]
+> - Ejecuta un comando por vez. Presiona **ESC** para cerrar la ventana.
+> - Se utiliza `exec:exec` (y no `exec:java`) para asegurar la correcta inicialización del hilo principal en todas las plataformas.
+> - En **macOS**, el perfil Maven activa automáticamente `-XstartOnFirstThread` para GLFW.
+> - Se incluyen binarios nativos para Windows x64, macOS (Intel y Apple Silicon) y Linux (x64 y ARM64). Requiere soporte para OpenGL 3.3 Core Profile.
+
+---
+
+## Arquitectura y acumulación de avances
+
+El proyecto se estructura bajo el principio de reutilización orientada a objetos mediante herencia (`extends`) y llamadas a `super`:
 
 ```text
-clase1: ciudad, mapa y renderizador
-  └── clase2 extends clase1: auto, conducción y colisiones
-        └── clase3 extends clase2: iluminación
-              └── clase4 extends clase3: detalles urbanos, entregas y minimapa
+CiudadBase
+  │   (Mapa matricial 11×11, renderizador OpenGL 3.3, shaders básicos, cámara orbital)
+  │
+  └── CiudadConAuto extends CiudadBase
+        │   (Física de vehículo, remolque/chata acoplada, colisiones compuestas y cámara de seguimiento)
+        │
+        └── CiudadIluminada extends CiudadConAuto
+              │   (Ciclo día/noche, 25 farolas procedimentales, faros direccionales y shaders con iluminación Lambertiana)
+              │
+              └── JuegoEntregas extends CiudadIluminada
+                    (Decoración de parques/edificios, semáforos animados, minimapa ortográfico con glScissor y juego de 5 entregas)
 ```
 
-Cada archivo tiene su propio `main` y puede ejecutarse como una etapa distinta dentro del proyecto. Las etapas posteriores necesitan los archivos anteriores: `extends` reutiliza el avance y `super.escena()` lo dibuja antes de añadir contenido. No son cuatro copias independientes. Así, en clase2 se explica el auto sin repetir la configuración de OpenGL. Se conservaron los nombres en minúscula solicitados; en proyectos Java es habitual usar `Clase1`.
+Cada clase extiende la funcionalidad de la anterior sin duplicar código:
+- [CiudadBase.java](file:///c:/Users/LENOVO/Documents/proyecto_grafica/CiudadConduccion/src/main/java/com/graphics/CiudadBase.java): Configura GLFW, compila shaders, genera el cubo maestro unitario con normales y renderiza la cuadrícula urbana.
+- [CiudadConAuto.java](file:///c:/Users/LENOVO/Documents/proyecto_grafica/CiudadConduccion/src/main/java/com/graphics/CiudadConAuto.java): Agrega la cinemática de aceleración, frenado, giro proporcional y el ensamblaje modular del vehículo con su chata acoplada, junto con la detección de colisiones de ambos componentes.
+- [CiudadIluminada.java](file:///c:/Users/LENOVO/Documents/proyecto_grafica/CiudadConduccion/src/main/java/com/graphics/CiudadIluminada.java): Reemplaza el shader de color plano por cálculo de iluminación difusa, luces puntuales de farolas en cada manzana y conos de luz frontales de los faros con `smoothstep`.
+- [JuegoEntregas.java](file:///c:/Users/LENOVO/Documents/proyecto_grafica/CiudadConduccion/src/main/java/com/graphics/JuegoEntregas.java): Agrega bancos y árboles en parques, ventanas en fachadas, pasos de peatones, semáforos animados de 3 fases, segundo pase de renderizado para minimapa con recorte (`glScissor`) y lógica de metas/entregas.
 
-## Cómo leer el código comentado
+---
 
-Los cuatro archivos están divididos en secciones numeradas. Cada instrucción tiene un comentario en español; cada método indica su propósito. Las llaves y líneas vacías solo separan bloques. Los shaders también están explicados línea por línea dentro de sus cadenas GLSL.
+## Guion didáctico de las cuatro etapas
 
-- **clase1:** variables → inicio/ciclo/limpieza → teclado/cámara → ciudad → cajas/uniforms → shaders → vértices del cubo.
-- **clase2:** variables del auto → teclado → movimiento → colisiones → cámara → piezas del vehículo.
-- **clase3:** luces → controles → envío de datos → farolas → shader de iluminación.
-- **clase4:** partida → controles → entregas → destino → decoración → minimapa.
+### Etapa 1 — `CiudadBase`: Ciudad 3D y renderizador básico
 
-Se usa una instrucción por línea, condiciones con llaves y cálculos intermedios con nombres descriptivos. El cubo contiene sus 36 vértices explícitos, como en los ejemplos originales. En `caja()` y `pieza()`, los argumentos mantienen este orden: posición X/Y/Z, tamaño X/Y/Z y color rojo/verde/azul; `cajaGirada()` agrega el ángulo al final.
+- **Resultado:** Una ciudad 3D con avenidas continuas, manzanas de edificios y parques, y cámara orbital controlable con flechas izquierda/derecha.
+- **Conceptos clave:**
+  1. **Matriz `MAPA` (11×11):** Donde `0` = calle, `1` = edificio y `2` = parque.
+  2. **Coordenadas de mundo (`centro()`):** Cada celda mide `CELDA = 10` unidades; con 11 celdas el mapa abarca de `-55` a `+55` (`LIMITE = 55`, 110×110 unidades en total).
+  3. **VBO y VAO:** Cubo unitario de 36 vértices con posiciones y normales explícitas.
+  4. **Matrices y transformaciones:** Funciones `caja()` y `cajaGirada()` que multiplican traslación, rotación y escalado para renderizar cualquier estructura urbana.
+  5. **Ciclo de vida de la ventana:** `iniciar()`, `loop()`, `dibujarFrame()` y `limpiar()`.
 
-## Guion de enseñanza
+### Etapa 2 — `CiudadConAuto`: Vehículo, remolque ("chata") y colisiones
 
-### Clase 1 — Crear primero la ciudad
+- **Resultado:** Vehículo rojo con cabina azulada y un remolque/chata de carga acoplado detrás con barandas de madera y encomiendas; cámara de seguimiento en tercera persona y física de conducción con prevención de choques.
+- **Conceptos clave:**
+  1. **Modelo compuesto del vehículo y la chata:** Ensamblado con transformaciones locales en `pieza()` y `dibujarChataRemolque()`: enganche, lanza en V, plataforma, barandas, esquineros metálicos, ruedas con llantas, guardabarros, luces y cajas de carga.
+  2. **Cinemática del auto:** Integración de aceleración (`9 m/s²`), resistencia exponencial, reversa (`-6 m/s`) y avance máximo (`16 m/s`). El giro responde a la orientación y velocidad del vehículo.
+  3. **Sistema de colisiones compuestas:**
+     - `puedeCircular()`: Verifica que el círculo de colisión del auto no invada los rectángulos de las manzanas ni traspase los bordes de la ciudad.
+     - `chataColisiona()`: Muestreo a lo largo del remolque (lanza, frente, centro/ruedas, sector posterior y portón) para impedir que la chata golpee aceras, edificios o rebase los bordes del mapa al girar.
+     - `vehiculoPuedeCircular()`: Convalida conjuntamente auto y chata antes de autorizar el desplazamiento o la rotación.
+  4. **Cámara:** Alternancia con tecla `C` entre cámara de seguimiento en tercera persona y cámara orbital general.
 
-**Resultado:** una ciudad 3D con calles conectadas, marcas viales, edificios, aceras y parques. Las flechas izquierda/derecha orbitan la cámara.
+### Etapa 3 — `CiudadIluminada`: Ciclo día/noche y fuentes de luz
 
-1. Leer `MAPA`: 0 es calle, 1 edificio y 2 parque. Las filas corresponden a Z y las columnas a X; Y es altura.
-2. Explicar `centro()`: convierte índices de matriz a coordenadas del mundo. Cada celda mide 10 unidades y el mapa ocupa 110 × 110 (mapa de 11 × 11 celdas).
-3. Revisar `crearCubo()`: posiciones y normales en VBO, atributos en VAO y 36 vértices.
-4. Seguir `caja()` y `cajaGirada()`: un cubo unitario se transforma en asfalto, edificio o línea.
-5. Leer `vertexShader()`: modelo, cámara y perspectiva. `uMapa` deja preparado el segundo tipo de proyección que se usa en clase4.
-6. Recorrer `run()`, `iniciar()`, `loop()`, `dibujarFrame()` y `limpiar()`: eventos, actualización, limpieza, dibujo y presentación.
+- **Resultado:** Farolas cálidas en las 25 manzanas urbanas, cambio instantáneo entre día y noche, y faros delanteros con atenuación cuadrática y proyección cónica.
+- **Conceptos clave:**
+  1. **Modelo de iluminación Phong/Lambert:** Shader de fragmentos con componente ambiental, solar direccional y atenuación por distancia.
+  2. **25 Farolas procedimentales:** `crearLuces()` recorre la matriz y ubica una farola en la esquina exterior de cada manzana a `Y = 4.5`.
+  3. **Faros delanteros cónicos:** Dos proyectores frontales calculados mediante producto punto (`dot`) y `smoothstep(0.85, 0.97)` para simular haces de luz realistas.
+  4. **Emisión de materiales (`uEmision`):** Evita que las bombillas encendidas se oscurezcan de noche al evaluarse como fuentes de luz.
 
-**Ejercicio:** cambiar una manzana de edificio a parque y variar las alturas. Mantener calles conectadas. Las normales se preparan aquí, pero la iluminación se introduce en clase3.
+### Etapa 4 — `JuegoEntregas`: Detalles urbanos, entregas y minimapa
 
-### Clase 2 — Crear y mover el auto
+- **Resultado:** Paisaje urbano ambientado con árboles, bancos, ventanas, pasos peatonales cebrados y semáforos animados; minimapa en esquina superior derecha y dinámica de juego con 5 paradas de entrega.
+- **Conceptos clave:**
+  1. **Decoración urbana:** Parques con vegetación y bancos; edificios con ventanas emisivas calculadas por pisos en sus 4 fachadas; pasos peatonales en las calzadas adyacentes.
+  2. **Semáforos animados:** Ciclo semafórico continuo de 12 segundos (rojo 5 s, verde 5 s, amarillo 2 s) distribuido en esquinas libres.
+  3. **Mecánica de entregas:** 5 coordenadas (`DESTINOS`) donde el jugador debe posicionarse a menos de 3 unidades y frenar a menos de 1 u/s. La parada activa exhibe una plataforma y una baliza dorada giratoria.
+  4. **Minimapa en segundo pase:** Renderizado ortográfico cenital en un viewport secundario con prueba de tijera (`glScissor`), mostrando la silueta del auto en cian, su vector de dirección en blanco y la meta dorada.
 
-**Resultado:** auto rojo con cabina, ruedas y faros, cámara de seguimiento y colisiones con manzanas y borde.
+---
 
-1. Leer `dibujarAuto()` y `pieza()`: las piezas usan coordenadas locales que giran y se trasladan juntas.
-2. Estudiar `actualizar(deltaTime)`: aceleración, resistencia, freno y límites de velocidad.
-3. Relacionar seno/coseno con la dirección del auto. Su frente local es -Z; el giro está en radianes.
-4. Explicar el giro proporcional a la velocidad y el cambio de dirección al retroceder.
-5. Revisar `puedeCircular()`: círculo contra rectángulo, punto más cercano y distancia al cuadrado.
-6. Alternar cámaras con C para observar la conducción en el mapa.
+## Controles del juego
 
-**Ejercicio:** modificar aceleración y resistencia y comparar el manejo. El círculo de colisión es conservador para contener todas las piezas. El choque detiene al auto; no hay rebotes. El paso temporal se limita para evitar atravesar una manzana tras una pausa larga.
-
-### Clase 3 — Focos e iluminación
-
-**Resultado:** ambiente nocturno, 25 farolas (una por manzana) que iluminan superficies, faros del vehículo y cambio día/noche.
-
-1. Comparar el shader de color plano de clase1 con `fragmentShader()` de clase3.
-2. Estudiar normales y Lambert: `max(dot(normal, direccionLuz), 0)`.
-3. Revisar ambiente y luz direccional del sol.
-4. Relacionar las coordenadas de `LUCES` con los postes dibujados en `escena()`.
-5. Analizar cómo disminuye la luz con la distancia.
-6. Explicar el cono de los faros con producto escalar y `smoothstep`.
-7. Comparar emisión de la bombilla con la luz calculada sobre el suelo. Son fenómenos distintos.
-
-**Ejercicio:** variar el color y la atenuación de una farola. La iluminación es local, sin sombras ni oclusión: una luz puede atravesar un edificio. Implementar shadow maps queda como ampliación. El cielo conserva el mismo fondo para concentrar la comparación día/noche en las superficies.
-
-### Clase 4 — Ciudad final y minimapa
-
-**Resultado:** parques con árboles y bancos, ventanas iluminadas, pasos peatonales, semáforos animados, minimapa y juego de cinco entregas.
-
-1. Estudiar `decorarCiudad()` y sus métodos `dibujarParque()`, `dibujarVentanas()`, `dibujarPasoPeatonal()` y `dibujarSemaforo()`: composición de objetos reutilizando cajas y la matriz.
-2. Leer `DESTINOS` y `actualizar()`: acercarse a menos de 3 unidades y frenar a menos de 1 unidad/segundo completa una entrega.
-3. Seguir `dibujarFrame()`: primero la cámara principal, después una vista ortográfica en otro viewport.
-4. Explicar `glScissor`: permite borrar solo el recuadro del minimapa y su profundidad.
-5. Mostrar por qué se restauran viewport, scissor y `uMapa` al terminar.
-6. Seguir el indicador cian del auto y su punta blanca; la marca dorada indica el destino activo.
-
-**Ejercicio:** agregar una sexta entrega sobre una calle o modificar el tamaño del minimapa. El minimapa mantiene el norte (-Z) arriba. El destino se muestra también como baliza dorada en el mundo. Al completar cinco entregas aparece GANASTE en el título; R reinicia.
-
-## Controles
-
-| Tecla | Acción | Desde |
+| Tecla | Acción | Disponible desde |
 |---|---|---|
-| Izquierda / derecha | Orbitar la ciudad | Clase 1 únicamente |
-| W / S o arriba / abajo | Acelerar / frenar y retroceder | Clase 2 |
-| A / D o izquierda / derecha | Girar mientras el auto se mueve | Clase 2 |
-| Espacio | Freno | Clase 2 |
-| C | Cámara de seguimiento / aérea oblicua | Clase 2 |
-| R | Reiniciar auto y, en clase4, las entregas | Clase 2 |
-| N | Día / noche | Clase 3 |
-| F | Encender / apagar faros | Clase 3 |
-| M | Mostrar / ocultar minimapa | Clase 4 |
-| ESC | Salir | Todas |
+| **W** / **Flecha arriba** | Acelerar hacia adelante | `CiudadConAuto` (Etapa 2) |
+| **S** / **Flecha abajo** | Frenar y dar marcha atrás | `CiudadConAuto` (Etapa 2) |
+| **A** / **Flecha izquierda** | Girar a la izquierda (según velocidad) | `CiudadConAuto` (Etapa 2) |
+| **D** / **Flecha derecha** | Girar a la derecha (según velocidad) | `CiudadConAuto` (Etapa 2) |
+| **Espacio** | Freno de mano | `CiudadConAuto` (Etapa 2) |
+| **C** | Alternar cámara (seguimiento / orbital general) | `CiudadConAuto` (Etapa 2) |
+| **R** | Reiniciar vehículo (y contador de entregas en etapa 4) | `CiudadConAuto` (Etapa 2) |
+| **N** | Alternar ciclo Día / Noche | `CiudadIluminada` (Etapa 3) |
+| **F** | Encender / apagar faros frontales del auto | `CiudadIluminada` (Etapa 3) |
+| **M** | Mostrar / ocultar minimapa | `JuegoEntregas` (Etapa 4) |
+| **Flecha izquierda / derecha** | Orbitar cámara de la ciudad | `CiudadBase` (únicamente Etapa 1) |
+| **ESC** | Salir de la aplicación | Todas las etapas |
 
-El título de la ventana muestra velocidad en km/h (se supone una unidad = un metro), luces, entregas y tiempo. Puede truncarse si la ventana es pequeña. La velocidad máxima real es algo menor que el límite por la resistencia aplicada. Los semáforos son decorativos: cambian de color pero no bloquean al vehículo. No hay tráfico, peatones, audio, sombras, modelos importados ni ruedas animadas; este es el alcance del ejemplo didáctico finalizado.
+> La barra de título de la ventana muestra en tiempo real la velocidad en km/h, el estado de iluminación, el avance de las entregas y el cronómetro de la partida.
 
-## Verificación
+---
+
+## Verificación y pruebas automáticas
+
+El proyecto incluye pruebas unitarias completas bajo JUnit que validan la geometría, rutas, colisiones y estado del juego sin requerir contexto gráfico:
 
 ```sh
 mvn test
 ```
 
-Las pruebas de lógica comprueban rutas transitables, manzanas, márgenes de colisión y reinicio sin abrir ventanas. Para un arranque gráfico breve puede pasarse `-Ddemo.frames=6` a la **JVM del juego**; al llegar a ese número de cuadros la ventana se cierra. Esta prueba necesita pantalla y comprueba también compilación/enlace de shaders y errores OpenGL.
+### Conjunto de pruebas ([ConduccionTest.java](file:///c:/Users/LENOVO/Documents/proyecto_grafica/CiudadConduccion/src/test/java/com/graphics/ConduccionTest.java))
 
-Práctica manual: ejecutar cada etapa; conducir y chocar con una acera; retroceder; cambiar cámara; alternar N/F; redimensionar la ventana; alternar M; completar las cinco entregas y reiniciar con R.
+1. **`testMapaYConstantes`**: Verifica dimensiones mínimas del mapa (11×11), tamaño de celda (`CELDA = 10`), cálculo de límites (`LIMITE = 55`) y conteo de manzanas (19 edificios y 6 parques).
+2. **`testCallesTransitables`**: Comprueba que la avenida longitudinal oeste y la perimetral norte sean transitables de punta a punta, así como el punto de inicio `(-30, 30)`.
+3. **`testObstaculosYLimites`**: Valida que el vehículo no pueda ingresar a centros de edificios, parques ni rebasar los bordes del mapa.
+4. **`testDestinosAlcanzables`**: Mediante una búsqueda en anchura (BFS) sobre la red de calles, asegura que las 5 paradas de entrega estén efectivamente conectadas al punto de inicio.
+5. **`testLuces`**: Comprueba que se generen las 25 farolas y que todas se ubiquen dentro de los márgenes de la ciudad.
+6. **`testReinicio`**: Asegura que el método `reiniciar()` restablezca con precisión las coordenadas `(-30, 30)`, velocidad `0`, ángulo `0` y contador de entregas `0`.
+7. **`testColisionChata`**: Valida la detección de colisiones de la chata/remolque y su lanza contra obstáculos y bordes exteriores, impidiendo que el vehículo circule si el acoplado choca.
 
-Verificado en Windows 11 con JDK 21 y Maven 3.9.16: mvn test pasa las 6 pruebas y se completaron manualmente las 5 entregas, con N, F, M, C y R.
+### Parámetro de prueba visual breve
+
+Para comprobar el enlace de shaders, carga de GLFW y contexto OpenGL sin dejar la ventana abierta indefinidamente, puede especificarse el argumento `-Ddemo.frames`:
+
+```sh
+mvn compile exec:exec -Ddemo.frames=10
+```
+La aplicación correrá durante 10 cuadros y se cerrará automáticamente, reportando errores de OpenGL si los hubiera.

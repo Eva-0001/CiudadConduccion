@@ -1,15 +1,27 @@
 package com.graphics; // Reúne la versión final con las otras tres lecciones.
 
 import static org.lwjgl.glfw.GLFW.*; // Permite consultar la tecla que controla el minimapa.
+import static org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT;
+import static org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT;
+import static org.lwjgl.opengl.GL11.GL_NO_ERROR;
+import static org.lwjgl.opengl.GL11.GL_SCISSOR_TEST;
+import static org.lwjgl.opengl.GL11.glClear;
+import static org.lwjgl.opengl.GL11.glClearColor;
+import static org.lwjgl.opengl.GL11.glDisable;
+import static org.lwjgl.opengl.GL11.glEnable;
+import static org.lwjgl.opengl.GL11.glGetError;
+import static org.lwjgl.opengl.GL11.glScissor;
+import static org.lwjgl.opengl.GL11.glViewport;
 import static org.lwjgl.opengl.GL33.*; // Permite cambiar viewport, recorte y buffers de dibujo.
 
 /**
  * CLASE 4: CIUDAD TERMINADA, ENTREGAS Y MINIMAPA.
- * Orden de lectura: estado, controles, entregas, decoración y segundo pase de dibujo.
+ * Orden de lectura: estado, controles, entregas, decoración y segundo pase de
+ * dibujo.
  * Hereda clase3, que hereda clase2, que a su vez hereda clase1.
  * Los semáforos son decorativos; el ejemplo no incluye tráfico autónomo.
  */
-public class clase4 extends clase3 {
+public class JuegoEntregas extends CiudadIluminada {
 
     // ==================== 1. ESTADO DEL JUEGO ====================
     private boolean mostrarMapa = true; // Muestra el minimapa desde el inicio.
@@ -17,11 +29,11 @@ public class clase4 extends clase3 {
     private float tiempo = 0; // Acumula los segundos de la partida hasta completar el recorrido.
     private float reloj = 0; // Segundos totales desde que abre el programa para animaciones continuas.
     protected static final float[][] DESTINOS = { // Cada fila contiene X y Z de una parada sobre la calle.
-        {50, 30}, // Primera entrega: lado este del mapa.
-        {50, -50}, // Segunda entrega: esquina noreste.
-        {-50, -50}, // Tercera entrega: esquina noroeste.
-        {-50, 50}, // Cuarta entrega: esquina suroeste.
-        {10, 50} // Quinta entrega: borde sur central.
+            { 50, 30 }, // Primera entrega: lado este del mapa.
+            { 50, -50 }, // Segunda entrega: esquina noreste.
+            { -50, -50 }, // Tercera entrega: esquina noroeste.
+            { -50, 50 }, // Cuarta entrega: esquina suroeste.
+            { 10, 50 } // Quinta entrega: borde sur central.
     };
 
     // ==================== 2. CONTROLES Y REINICIO ====================
@@ -56,7 +68,8 @@ public class clase4 extends clase3 {
         tiempo += deltaTime; // Suma los segundos de este cuadro al cronómetro.
         float distanciaX = autoX - DESTINOS[entregas][0]; // Calcula la separación horizontal al destino activo.
         float distanciaZ = autoZ - DESTINOS[entregas][1]; // Calcula la separación en profundidad al destino.
-        float distanciaCuadrada = distanciaX * distanciaX + distanciaZ * distanciaZ; // Mide cercanía sin calcular raíz cuadrada.
+        float distanciaCuadrada = distanciaX * distanciaX + distanciaZ * distanciaZ; // Mide cercanía sin calcular raíz
+                                                                                     // cuadrada.
         boolean estaCerca = distanciaCuadrada < 3 * 3; // Acepta un radio de llegada de tres unidades.
         boolean estaFrenando = Math.abs(velocidad) < 1; // Exige circular a menos de una unidad por segundo.
         if (estaCerca && estaFrenando) { // Solo completa la entrega si ambas condiciones se cumplen.
@@ -70,10 +83,13 @@ public class clase4 extends clase3 {
         String mensaje = super.estadoExtra(); // Recupera los indicadores de iluminación.
         mensaje += " | M: mapa | "; // Muestra la tecla que alterna el minimapa.
         if (entregas == DESTINOS.length) { // Selecciona el texto de victoria al completar todas las paradas.
-            mensaje += "GANASTE en " + (int) tiempo + " s! R: jugar otra vez"; // Muestra tiempo final y opción de reinicio.
+            mensaje += "GANASTE en " + (int) tiempo + " s! R: jugar otra vez"; // Muestra tiempo final y opción de
+                                                                               // reinicio.
         } else { // Durante el recorrido muestra progreso e instrucciones.
-            mensaje += "Entregas " + entregas + "/" + DESTINOS.length; // Indica cuántas paradas se completaron del total dinámico.
-            mensaje += " | Frena en la marca dorada | " + (int) tiempo + " s"; // Explica la condición de entrega y el tiempo.
+            mensaje += "Entregas " + entregas + "/" + DESTINOS.length; // Indica cuántas paradas se completaron del
+                                                                       // total dinámico.
+            mensaje += " | Frena en la marca dorada | " + (int) tiempo + " s"; // Explica la condición de entrega y el
+                                                                               // tiempo.
         }
         return mensaje; // Entrega el texto a actualizarTitulo() de clase2.
     }
@@ -97,11 +113,13 @@ public class clase4 extends clase3 {
         float x = DESTINOS[entregas][0]; // Lee el X de la próxima entrega.
         float z = DESTINOS[entregas][1]; // Lee el Z de la próxima entrega.
         entero("uEmision", 1); // Hace que el objetivo sea visible incluso de noche.
-        float ladoMarca = vistaMapa ? 9 : 5; // Agranda la marca en el minimapa para compensar la escala mayor del mapa 11x11.
+        float ladoMarca = vistaMapa ? 9 : 5; // Agranda la marca en el minimapa para compensar la escala mayor del mapa
+                                             // 11x11.
         caja(x, 0.06f, z, ladoMarca, 0.08f, ladoMarca, 1, 0.72f, 0.12f); // Dibuja una marca dorada sobre el asfalto.
         if (!vistaMapa) { // Evita añadir una baliza tridimensional al mapa pequeño.
             float alturaBaliza = 3.5f + (float) Math.sin(tiempo * 2) * 0.3f; // Hace oscilar la baliza suavemente.
-            cajaGirada(x, alturaBaliza, z, 0.8f, 0.8f, 0.8f, 1, 0.8f, 0.15f, tiempo); // Dibuja el cubo giratorio del objetivo.
+            cajaGirada(x, alturaBaliza, z, 0.8f, 0.8f, 0.8f, 1, 0.8f, 0.15f, tiempo); // Dibuja el cubo giratorio del
+                                                                                      // objetivo.
         }
         entero("uEmision", 0); // Devuelve a los siguientes objetos su iluminación normal.
     }
@@ -115,17 +133,19 @@ public class clase4 extends clase3 {
                 float x = centro(columna); // Obtiene el centro horizontal de la parcela.
                 float z = centro(fila); // Obtiene el centro de la parcela en profundidad.
                 int tipo = MAPA[fila][columna]; // Lee el contenido de la celda.
-                if (tipo == 2) { // Detecta una parcela de parque.
+                if (tipo == PARQUE) { // Detecta una parcela de parque.
                     dibujarParque(x, z); // Añade árboles y un banco.
                 }
-                if (tipo == 1) { // Detecta una parcela con edificio.
-                    float altura = 5 + (fila * 3 + columna * 7) % 9; // Recupera la misma altura calculada en clase1.
+                if (tipo == EDIFICIO) { // Detecta una parcela con edificio.
+                    float altura = alturaEdificio(fila, columna); // Recupera la misma altura calculada en clase1.
                     dibujarVentanas(x, z, altura); // Coloca ventanas en sus cuatro fachadas.
                 }
-                if (tipo != 0) { // La señalización se coloca junto a las manzanas, no en celdas de calle.
+                if (tipo != CALLE) { // La señalización se coloca junto a las manzanas, no en celdas de calle.
                     dibujarPasoPeatonal(x, z); // Añade el cruce pintado sobre la calle contigua.
-                    float[] posFarola = posicionFarola(fila, columna); // Consulta la esquina en que se colocará la farola de esta manzana.
-                    float semaforoX = (posFarola[0] == x + 4) ? x - 4 : x + 4; // Si la farola ocupa la esquina noreste, traslada el semáforo a la noroeste.
+                    float[] posFarola = posicionFarola(fila, columna); // Consulta la esquina en que se colocará la
+                                                                       // farola de esta manzana.
+                    float semaforoX = (posFarola[0] == x + 4) ? x - 4 : x + 4; // Si la farola ocupa la esquina noreste,
+                                                                               // traslada el semáforo a la noroeste.
                     dibujarSemaforo(semaforoX, z - 4); // Coloca el semáforo en la esquina libre de la acera.
                 }
             }
@@ -134,7 +154,7 @@ public class clase4 extends clase3 {
 
     /** Construye cuatro árboles y un banco utilizando cajas. */
     private void dibujarParque(float x, float z) {
-        float[] posiciones = {-2.5f, 2.5f}; // Define desplazamientos respecto al centro de la parcela.
+        float[] posiciones = { -2.5f, 2.5f }; // Define desplazamientos respecto al centro de la parcela.
         for (float desplazamientoX : posiciones) { // Selecciona el lado izquierdo o derecho del parque.
             for (float desplazamientoZ : posiciones) { // Selecciona el lado delantero o trasero.
                 float arbolX = x + desplazamientoX; // Convierte el desplazamiento local en coordenada X mundial.
@@ -154,24 +174,35 @@ public class clase4 extends clase3 {
             entero("uEmision", 1); // Permite ver el color de las ventanas sin depender de farolas.
         }
         for (float y = 1.7f; y < altura; y += 2) { // Recorre los pisos separados por dos unidades de altura.
-            for (float desplazamiento = -2; desplazamiento <= 2; desplazamiento += 2) { // Coloca tres ventanas por fachada.
-                caja(x + desplazamiento, y, z - 3.51f, 0.8f, 0.9f, 0.04f, 0.95f, 0.75f, 0.38f); // Ventana de la fachada norte.
-                caja(x + desplazamiento, y, z + 3.51f, 0.8f, 0.9f, 0.04f, 0.95f, 0.75f, 0.38f); // Ventana de la fachada sur.
-                caja(x - 3.51f, y, z + desplazamiento, 0.04f, 0.9f, 0.8f, 0.95f, 0.75f, 0.38f); // Ventana de la fachada oeste.
-                caja(x + 3.51f, y, z + desplazamiento, 0.04f, 0.9f, 0.8f, 0.95f, 0.75f, 0.38f); // Ventana de la fachada este.
+            for (float desplazamiento = -2; desplazamiento <= 2; desplazamiento += 2) { // Coloca tres ventanas por
+                                                                                        // fachada.
+                caja(x + desplazamiento, y, z - 3.51f, 0.8f, 0.9f, 0.04f, 0.95f, 0.75f, 0.38f); // Ventana de la fachada
+                                                                                                // norte.
+                caja(x + desplazamiento, y, z + 3.51f, 0.8f, 0.9f, 0.04f, 0.95f, 0.75f, 0.38f); // Ventana de la fachada
+                                                                                                // sur.
+                caja(x - 3.51f, y, z + desplazamiento, 0.04f, 0.9f, 0.8f, 0.95f, 0.75f, 0.38f); // Ventana de la fachada
+                                                                                                // oeste.
+                caja(x + 3.51f, y, z + desplazamiento, 0.04f, 0.9f, 0.8f, 0.95f, 0.75f, 0.38f); // Ventana de la fachada
+                                                                                                // este.
             }
         }
         entero("uEmision", 0); // Restablece la iluminación normal de los demás elementos.
     }
 
-    /** Dibuja las franjas blancas sobre la calle contigua al norte de la manzana. */
+    /**
+     * Dibuja las franjas blancas sobre la calle contigua al norte de la manzana.
+     */
     private void dibujarPasoPeatonal(float x, float z) {
         for (int desplazamiento = -3; desplazamiento <= 3; desplazamiento++) { // Coloca siete franjas paralelas.
-            caja(x + desplazamiento, 0.045f, z - 8, 0.45f, 0.04f, 2, 0.85f, 0.87f, 0.83f); // Eleva la pintura un poco sobre el suelo.
+            caja(x + desplazamiento, 0.045f, z - 8, 0.45f, 0.04f, 2, 0.85f, 0.87f, 0.83f); // Eleva la pintura un poco
+                                                                                           // sobre el suelo.
         }
     }
 
-    /** Construye un semáforo decorativo que alterna rojo, verde y amarillo cada 12 segundos. */
+    /**
+     * Construye un semáforo decorativo que alterna rojo, verde y amarillo cada 12
+     * segundos.
+     */
     private void dibujarSemaforo(float x, float z) {
         caja(x, 1.7f, z, 0.18f, 2.8f, 0.18f, 0.18f, 0.20f, 0.22f); // Dibuja el poste sobre la acera.
         caja(x, 3.1f, z, 0.55f, 1.2f, 0.45f, 0.08f, 0.10f, 0.12f); // Dibuja la carcasa de las tres luces.
@@ -200,14 +231,18 @@ public class clase4 extends clase3 {
                 verde = brillo; // Añade verde; rojo más verde produce amarillo.
             }
             float altura = 3.45f - indice * 0.35f; // Separa verticalmente las tres bombillas.
-            caja(x, altura, z - 0.24f, 0.28f, 0.25f, 0.06f, rojo, verde, 0.02f); // Dibuja la bombilla frente a la carcasa.
+            caja(x, altura, z - 0.24f, 0.28f, 0.25f, 0.06f, rojo, verde, 0.02f); // Dibuja la bombilla frente a la
+                                                                                 // carcasa.
         }
         entero("uEmision", 0); // Evita que el siguiente objeto herede la emisión del semáforo.
     }
 
     // ==================== 6. MINIMAPA: SEGUNDO PASE DE DIBUJO ====================
 
-    /** Dibuja la escena principal y después la misma ciudad desde arriba, en un recuadro. */
+    /**
+     * Dibuja la escena principal y después la misma ciudad desde arriba, en un
+     * recuadro.
+     */
     @Override // Amplía el cuadro completo definido en clase1.
     protected void dibujarFrame() {
         super.dibujarFrame(); // Dibuja primero la vista normal de la ciudad.
@@ -243,19 +278,21 @@ public class clase4 extends clase3 {
         }
     }
 
-    /** Dibuja una marca cian y una punta blanca por encima de los edificios del minimapa. */
+    /**
+     * Dibuja una marca cian y una punta blanca por encima de los edificios del
+     * minimapa.
+     */
     private void dibujarIndicadorAuto() {
-        cajaGirada(autoX, 25, autoZ, 4f, 0.1f, 6f, 0.1f, 1, 1, angulo); // Marca la posición con un rectángulo cian más grande, proporcional al mapa 11x11.
-        float frenteX = -(float) Math.sin(angulo); // Calcula la dirección frontal en el eje X.
-        float frenteZ = -(float) Math.cos(angulo); // Calcula la dirección frontal en el eje Z.
-        float puntaX = autoX + frenteX * 3.5f; // Desplaza la punta 3.5 unidades hacia delante en X.
-        float puntaZ = autoZ + frenteZ * 3.5f; // Desplaza la punta 3.5 unidades hacia delante en Z.
+        cajaGirada(autoX, 25, autoZ, 4f, 0.1f, 6f, 0.1f, 1, 1, angulo); // Marca la posición con un rectángulo cian más
+                                                                        // grande, proporcional al mapa 11x11.
+        float puntaX = autoX + frenteX() * 3.5f; // Desplaza la punta 3.5 unidades hacia delante en X.
+        float puntaZ = autoZ + frenteZ() * 3.5f; // Desplaza la punta 3.5 unidades hacia delante en Z.
         caja(puntaX, 26, puntaZ, 2f, 0.1f, 2f, 1, 1, 1); // Dibuja la punta blanca más grande encima del indicador cian.
     }
 
     /** Punto de entrada del proyecto final. */
     public static void main(String[] args) {
-        clase4 aplicacion = new clase4(); // Crea la versión con todas las etapas acumuladas.
+        JuegoEntregas aplicacion = new JuegoEntregas(); // Crea la versión con todas las etapas acumuladas.
         aplicacion.run(); // Inicia el ciclo de vida completo de la aplicación.
     }
 }
